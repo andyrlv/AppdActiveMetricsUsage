@@ -26,7 +26,7 @@ class GeneralAppdConnector(object):
         self.cookies = r.cookies
         self.headers['X-CSRF-TOKEN'] = self.csrf
         return
-
+ 
     def getData(self, path):
         r = requests.get("{}/{}".format(self.hostport,path),headers=self.headers, auth=(self.user + '@' + self.account, self.password), cookies=self.cookies)
         return r 
