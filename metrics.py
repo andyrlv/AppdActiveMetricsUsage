@@ -53,6 +53,7 @@ class Metrics(object):
                 file.write('\n')
 
     def test():
+        a = 1 + 2
         return
 
     def getData(self):
