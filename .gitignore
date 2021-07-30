@@ -1,9 +1,6 @@
-# ignore ini file
-config.ini
-
 # ignore data
 data/
 
-
 # ignore ide
 .vscode/
+config.ini
