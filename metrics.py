@@ -52,6 +52,9 @@ class Metrics(object):
                 file.write(json.dumps(el))
                 file.write('\n')
 
+    def test():
+        return
+
     def getData(self):
         # set connection to Controller
         self.connector.getConnectionData()
