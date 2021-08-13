@@ -2,12 +2,12 @@ ___author___ = "Andrey Orlov // andrey.orlov@appdynamics.com"
 
 import requests
 import configparser
-import xmltodict, json
+import json
 
 DATA = 'data/'
 DASHBOARDSMETRICFILE = 'dashboardmetrics.csv'
 HEALTHRULESMETRICSFILE = 'healthrulesmetrics.csv'
-DEBUG = True
+DEBUG = False
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -20,6 +20,7 @@ class GeneralAppdConnector(object):
         self.account = config['APPD']['account']
         self.password = config['APPD']['password']
         self.headers = { "Content-Type": "application/json" }
+        self.analytics = config['APPD']['analytics']
 
 
     def getConnectionData(self):
@@ -51,7 +52,6 @@ class Metrics(object):
             index += 1
             if DEBUG and index == 5:
                 break
-            metric = self.getMetricsFromDashboard(self.connector.getData('CustomDashboardImportExportServlet?dashboardId={}'.format(dashboard['id'])).json())
             metrics.update(self.getMetricsFromDashboard(self.connector.getData('CustomDashboardImportExportServlet?dashboardId={}'.format(dashboard['id'])).json()))
         
         return metrics
@@ -60,7 +60,7 @@ class Metrics(object):
         # Check valid dashboard or not
         if 'name' not in dashboard or dashboard['widgetTemplates'] is None:
             print('Invalid dashboard!')
-            return []
+            return {}
         print ('Getting data from dashboard -> {}'.format(dashboard['name']))
         
         print('Collecting metrics...')
@@ -105,13 +105,14 @@ class Metrics(object):
     def getDataFromHealthrules(self):
         # GET ALL METRICS FROM HEALTHRULES
         # get list of applications
-        apps = self.connector.getData('rest/applications')
-        apps = json.loads(json.dumps(xmltodict.parse(apps.text)))
-        apps = apps['applications']['application']
+        apps = self.connector.getData('rest/applications?output=JSON').json()
+        # Don't touch this hard code, if you want analytics health rules...
+        apps.append({'id': self.connector.analytics, 'name': 'Analytics'})
+
         healthrulemetrics = {}
         index = 0
         for app in apps:
-            print('Processing {} from {}'.format(index, len(apps)))
+            print('Processing {} ({}) from {}'.format(index + 1, app['name'], len(apps)))
             index += 1
             if DEBUG and index == 5:
                 break
@@ -120,6 +121,7 @@ class Metrics(object):
             healthrules = self.connector.getData('alerting/rest/v1/applications/{}/health-rules'.format(app['id'])).json()
             for healthrule in healthrules:
                 hr = self.connector.getData('alerting/rest/v1/applications/{}/health-rules/{}'.format(app['id'], healthrule['id'])).json()
+                # Preparing structure
                 tmphr = {}
                 tmphr['type'] = 'healthrule'
                 tmphr['application'] = app['name']
@@ -167,22 +169,19 @@ class Metrics(object):
     def getData(self):
         # set connection to Controller
         self.connector.getConnectionData()
-        
-        
+
+        # collect dashboard metrics
         dashboardsmetrics = self.getDataFromDashboards()
-        #--- debug ---
-        if DEBUG :
-            self.writeDataToFile(DATA + DASHBOARDSMETRICFILE, dashboardsmetrics)
+        self.writeDataToFile(DATA + DASHBOARDSMETRICFILE, dashboardsmetrics)
         
+        # collect health rules metrics
         healthrulemetrics = self.getDataFromHealthrules()
-        #debug
-        if DEBUG :
-            self.writeDataToFile(DATA + HEALTHRULESMETRICSFILE, healthrulemetrics)
+        self.writeDataToFile(DATA + HEALTHRULESMETRICSFILE, healthrulemetrics)
         return healthrulemetrics
 
 
 if __name__ == "__main__":
     m = Metrics()
     metrics = m.getData()
-    print(metrics)
+    #print(metrics)
 
